@@ -1,0 +1,176 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "baseName": {
+            "type": "string",
+            "defaultValue": "kafka",
+            "minLength": 2,
+            "maxLength": 6,
+            "metadata": {
+                "description": "Basename as suffix for resources, only alphanumeric characters are allowed"
+            }
+        }
+    },
+    "variables": {
+        "location": "[resourceGroup().location]",
+        "suffix": "[toLower(substring(concat(parameters('baseName'), uniqueString(resourceGroup().id)), 0, 8))]",
+        "storageAccountName": "[concat('st', variables('suffix'))]",
+        "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+        "hostingPlanName": "[concat('plan-', variables('suffix'))]",
+        "hostingPlanId": "[resourceId('Microsoft.Web/serverFarms', variables('hostingPlanName'))]",
+        "appInsightsName": "[concat('appi-', variables('suffix'))]",
+        "appInsightsId": "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
+        "eventHubNamespace": "[concat('sb-', variables('suffix'))]",
+        "eventHubNamespaceId": "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespace'))]",
+        "eventHubName": "[concat('evh-', variables('suffix'))]",
+        "eventHubId": "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespace'), variables('eventHubName'))]",
+        "eventHubAuthName": "send-and-listen",
+        "eventHubAuthId": "[resourceId('Microsoft.EventHub/namespaces/eventhubs/authorizationRules', variables('eventHubNamespace'), variables('eventHubName'), variables('eventHubAuthName'))]",
+        "functionAppName": "[concat('func-', variables('suffix'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "name": "[variables('storageAccountName')]",
+            "apiVersion": "2019-06-01",
+            "location": "[variables('location')]",
+            "kind": "Storage",
+            "sku": {
+                "name": "Standard_LRS"
+            }
+        },
+        {
+            "type": "Microsoft.Insights/components",
+            "apiVersion": "2018-05-01-preview",
+            "name": "[variables('appInsightsName')]",
+            "location": "[variables('location')]",
+            "kind": "web",
+            "properties": {
+                "Application_Type": "web"
+            }
+        },
+        {
+            "type": "Microsoft.EventHub/namespaces",
+            "apiVersion": "2018-01-01-preview",
+            "name": "[variables('eventHubNamespace')]",
+            "location": "[variables('location')]",
+            "sku": {
+                "name": "Standard",
+                "capacity": 1
+            },
+            "properties": {
+            }
+        },
+        {
+            "type": "Microsoft.EventHub/namespaces/eventhubs",
+            "apiVersion": "2017-04-01",
+            "name": "[concat(variables('eventHubNamespace'), '/', variables('eventHubName'))]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "[variables('eventHubNamespaceId')]"
+            ],
+            "properties": {
+                "partitionCount": 32
+            },
+            "resources": [
+                {
+                    "type": "authorizationRules",
+                    "apiVersion": "2017-04-01",
+                    "name": "[variables('eventHubAuthName')]",
+                    "dependsOn": [
+                        "[variables('eventHubId')]"
+                    ],
+                    "properties": {
+                        "rights": [
+                            "Send", "Listen"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Web/serverFarms",
+            "apiVersion": "2018-02-01",
+            "name": "[variables('hostingPlanName')]",
+            "location": "[variables('location')]",
+            "sku": {
+                "name": "EP1"
+            },
+            "properties": {
+                "maximumElasticWorkerCount": 20
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "name": "[variables('functionAppName')]",
+            "apiVersion": "2018-11-01",
+            "location": "[variables('location')]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[variables('storageAccountId')]",
+                "[variables('hostingPlanId')]",
+                "[variables('appInsightsId')]",
+                "[variables('eventHubId')]"
+            ],
+            "properties": {
+                "serverFarmId": "[variables('hostingPlanId')]",
+                "siteConfig": {
+                    "javaVersion": "1.8",
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountId'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountId'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(variables('functionAppName'))]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~3"
+                        },
+                        {
+                            "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                            "value": "[reference(variables('appInsightsId'), '2015-05-01').InstrumentationKey]"
+                        },
+                        {
+                            "name": "APPINSIGHTS_CONNECTION_STRING",
+                            "value": "[concat('InstrumentationKey=', reference(variables('appInsightsId'), '2015-05-01').InstrumentationKey)]"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "java"
+                        },
+                        {
+                            "name": "BROKERS",
+                            "value": "[concat(variables('eventHubNamespace'), '.servicebus.windows.net:9093')]"
+                        },
+                        {
+                            "name": "KAFKA_TOPIC",
+                            "value": "[variables('eventHubName')]"
+                        },
+                        {
+                            "name": "KAFKA_USER",
+                            "value": "$ConnectionString"
+                        },
+                        {
+                            "name": "KAFKA_PASSWORD",
+                            "value": "[listkeys(variables('eventHubAuthId'), '2017-04-01').primaryConnectionString]"
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "functionAppName": {
+            "type": "string",
+            "value": "[variables('functionAppName')]"
+        }
+    }
+}
