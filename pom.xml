@@ -136,13 +136,6 @@
                                         <include>local.settings.json</include>
                                     </includes>
                                 </resource>
-                                <!-- Hmm, maybe find a better way of copying this as it depends on the build  -->
-                                <resource>
-                                    <directory>${stagingDirectory}/bin</directory>
-                                    <includes>
-                                        <include>cacert.pem</include>
-                                    </includes>
-                                </resource>
                             </resources>
                         </configuration>
                     </execution>

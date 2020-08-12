@@ -23,7 +23,7 @@
         "appInsightsId": "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
         "eventHubNamespace": "[concat('sb-', variables('suffix'))]",
         "eventHubNamespaceId": "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespace'))]",
-        "eventHubName": "[concat('evh-', variables('suffix'))]",
+        "eventHubName": "evh-kafka",
         "eventHubId": "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespace'), variables('eventHubName'))]",
         "eventHubAuthName": "send-and-listen",
         "eventHubAuthId": "[resourceId('Microsoft.EventHub/namespaces/eventhubs/authorizationRules', variables('eventHubNamespace'), variables('eventHubName'), variables('eventHubAuthName'))]",
@@ -98,7 +98,8 @@
                 "name": "EP1"
             },
             "properties": {
-                "maximumElasticWorkerCount": 20
+                "maximumElasticWorkerCount": 20,
+                "reserved": true
             }
         },
         {
@@ -106,7 +107,7 @@
             "name": "[variables('functionAppName')]",
             "apiVersion": "2018-11-01",
             "location": "[variables('location')]",
-            "kind": "functionapp",
+            "kind": "functionapp,linux",
             "dependsOn": [
                 "[variables('storageAccountId')]",
                 "[variables('hostingPlanId')]",
@@ -116,7 +117,7 @@
             "properties": {
                 "serverFarmId": "[variables('hostingPlanId')]",
                 "siteConfig": {
-                    "javaVersion": "1.8",
+                    "linuxFxVersion": "JAVA|8",
                     "appSettings": [
                         {
                             "name": "AzureWebJobsStorage",
@@ -161,6 +162,10 @@
                         {
                             "name": "KAFKA_PASSWORD",
                             "value": "[listkeys(variables('eventHubAuthId'), '2017-04-01').primaryConnectionString]"
+                        },
+                        {
+                            "name": "LD_LIBRARY_PATH",
+                            "value": "/home/site/wwwroot/bin/runtimes/linux-x64/native"
                         }
                     ]
                 }

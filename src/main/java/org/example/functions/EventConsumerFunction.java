@@ -16,7 +16,6 @@ public class EventConsumerFunction extends AzureSpringBootRequestHandler<String,
                     password = "%KAFKA_PASSWORD%",
                     authenticationMode = BrokerAuthenticationMode.PLAIN,
                     protocol = BrokerProtocol.SASLSSL,
-                    sslCaLocation = "cacert.pem",
                     consumerGroup = "$Default")
                     String kafkaEventData,
             ExecutionContext context) {

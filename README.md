@@ -4,7 +4,7 @@ This is a sample project that illustrates how to use Kafka bindings for Azure Fu
 
 This repository includes an ARM template that provisions a number of Azure resources to demonstrate the capability. The template will create an Event Hub with Kafka endpoints, an Application Insights instance for monitoring the application, a Storage Account and a Function App on the Elastic Premium Plan.
 
-The Function App has two functions a `producer` that sends every minute a simple message to Event Hub using Azure Functions Event Hub bindings, and a `receiver` that consumes those messages through Kafka APIs and Azure Functions Kafka bindings. For more information on Azure Functions Kafka bindings, see the [docs](https://github.com/Azure/azure-functions-kafka-extension).
+The Function App has two functions, a `producer` that sends every minute a simple message, and a `receiver` that consumes those messages, through Kafka APIs and Azure Functions Kafka bindings. For more information on Azure Functions Kafka bindings, see the [docs](https://github.com/Azure/azure-functions-kafka-extension).
 
 ## Setup
 
@@ -29,7 +29,8 @@ If you'd like to experiment with the scaling capabilities of Azure Functions you
 ```bash
 az resource update -g $RG -n $FUNC_APP_NAME/config/web \
   --resource-type Microsoft.Web/sites \
-  --set properties.functionsRuntimeScaleMonitoringEnabled=1
+  --set properties.functionsRuntimeScaleMonitoringEnabled=1 \
+  -o none
 ```
 
 ## Development
