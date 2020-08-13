@@ -23,6 +23,8 @@ FUNC_APP_NAME=`az deployment group create -g $RG \
 > As some of the Azure resources need to have globally unique names, the included ARM templates attempt to
 > generate more or less unique names by appending a hash of the resource group name to the provided base name
 > If you prefer to have more control or need to use specific names, just update the variables in the templates.
+> At the moment the topic name is hard-coded for the `producer` as the current Kafka bindings library
+> currently cannot handle environment variables (see issue #[158](https://github.com/Azure/azure-functions-kafka-extension/issues/158)).
 
 If you'd like to experiment with the scaling capabilities of Azure Functions you need to turn that on explicitly by running the following command:
 
